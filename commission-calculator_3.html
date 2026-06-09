@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>主播提成计算器</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f7f6f3; --surface: #fff; --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.08); --border-strong: rgba(0,0,0,0.15);
+    --text: #1a1a18; --muted: #6b6b65; --faint: #a0a09a;
+    --teal: #0f6e56; --teal-bg: #e1f5ee; --teal-dark: #085041;
+    --blue: #185fa5; --blue-bg: #e6f1fb; --blue-dark: #0c447c;
+    --amber-bg: #faeeda; --amber-dark: #633806;
+    --purple-bg: #eeedfe; --purple-dark: #3c3489;
+    --r: 14px; --rs: 10px;
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+    background: var(--bg); color: var(--text);
+    padding: 1.2rem 1rem 5rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 480px; margin: 0 auto; }
+
+  header { margin-bottom: 1.4rem; }
+  .eyebrow { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-bottom: 5px; }
+  h1 { font-size: 24px; font-weight: 700; letter-spacing: -.4px; }
+  .subtitle { margin-top: 5px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r); padding: 1.1rem; margin-bottom: .85rem; }
+  .card-title { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-bottom: 1rem; }
+
+  .input-group { margin-bottom: 1rem; }
+  .input-group:last-child { margin-bottom: 0; }
+  .input-group > label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 7px; }
+
+  .stepper { display: flex; align-items: center; border: 0.5px solid var(--border-strong); border-radius: var(--rs); overflow: hidden; height: 54px; background: var(--surface); }
+  .stepper button {
+    width: 54px; height: 54px; border: none; background: var(--surface2);
+    color: var(--teal); font-size: 26px; font-weight: 300; cursor: pointer;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    user-select: none; -webkit-user-select: none;
+  }
+  .stepper button:active { background: #d5e8e2; }
+  .stepper input[type=number] {
+    flex: 1; height: 54px; border: none; background: transparent;
+    font-size: 22px; font-weight: 700; color: var(--text); text-align: center;
+    outline: none; -moz-appearance: textfield; padding: 0; min-width: 0;
+  }
+  .stepper input::-webkit-outer-spin-button,
+  .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  .slider-row { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
+  .slider-row input[type=range] {
+    flex: 1; min-width: 0;
+    -webkit-appearance: none; appearance: none;
+    height: 6px; border-radius: 3px;
+    background: var(--surface2);
+    outline: none; cursor: pointer;
+    touch-action: pan-x;
+  }
+  .slider-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--teal); border: 3px solid #fff;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.25);
+    cursor: pointer;
+  }
+  .slider-row input[type=range]::-moz-range-thumb {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--teal); border: 3px solid #fff; cursor: pointer;
+  }
+  .slider-val { font-size: 15px; font-weight: 700; color: var(--text); min-width: 56px; text-align: right; }
+
+  .status-bar {
+    border-radius: var(--rs); padding: 13px 14px; font-size: 13px; font-weight: 600;
+    margin-bottom: .85rem; display: flex; align-items: center; gap: 9px; line-height: 1.4;
+  }
+  .status-bar .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .s-low   { background: var(--amber-bg);  color: var(--amber-dark);  } .s-low .dot  { background: #ef9f27; }
+  .s-ok    { background: var(--teal-bg);   color: var(--teal-dark);   } .s-ok .dot   { background: var(--teal); }
+  .s-good  { background: var(--blue-bg);   color: var(--blue-dark);   } .s-good .dot { background: var(--blue); }
+  .s-great { background: var(--purple-bg); color: var(--purple-dark); } .s-great .dot{ background: #7f77dd; }
+
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: .85rem; }
+  .metric { background: var(--surface2); border-radius: var(--rs); padding: .9rem; }
+  .mlabel { font-size: 11px; color: var(--faint); margin-bottom: 5px; font-weight: 500; }
+  .mval { font-size: 20px; font-weight: 700; line-height: 1.1; }
+  .mval.rmb { color: var(--teal); } .mval.rm { color: var(--blue); } .mval.neu { color: var(--text); }
+
+  .breakdown { padding-top: 0; }
+  .brow { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 0.5px solid var(--border); }
+  .brow:last-child { border-bottom: none; }
+  .bl { font-size: 13px; color: var(--muted); }
+  .bv { font-size: 13px; font-weight: 700; }
+  .div { height: 0.5px; background: var(--border); margin: 4px 0; }
+
+  footer { margin-top: 1.5rem; text-align: center; font-size: 11px; color: var(--faint); line-height: 1.9; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="eyebrow">兼职主播工具</div>
+    <h1>提成计算器</h1>
+    <p class="subtitle">输入总音浪，即时推算 RMB 和 RM 提成</p>
+  </header>
+
+  <div class="card">
+    <div class="card-title">输入数据</div>
+
+    <div class="input-group">
+      <label>总音浪</label>
+      <div class="stepper">
+        <button id="btn-minus" type="button">−</button>
+        <input type="number" id="yinlang" value="30000" min="0" step="500" inputmode="numeric">
+        <button id="btn-plus" type="button">+</button>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>直播天数</label>
+      <div class="slider-row">
+        <input type="range" id="days" min="1" max="31" value="20" step="1">
+        <span class="slider-val" id="days-out">20 天</span>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>提成比例</label>
+      <div class="slider-row">
+        <input type="range" id="rate" min="10" max="80" value="50" step="5">
+        <span class="slider-val" id="rate-out">50%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="mlabel">换算 RMB</div><div class="mval neu" id="r0">-</div></div>
+    <div class="metric"><div class="mlabel">提成 RMB</div><div class="mval rmb" id="r1">-</div></div>
+    <div class="metric"><div class="mlabel">提成 RM</div><div class="mval rm" id="r2">-</div></div>
+    <div class="metric"><div class="mlabel">每日均摊 RM</div><div class="mval rm" id="r3">-</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">计算明细</div>
+    <div class="breakdown">
+      <div class="brow"><span class="bl">音浪 ÷ 10</span><span class="bv" id="b0">-</span></div>
+      <div class="brow"><span class="bl">× 提成比例</span><span class="bv" id="b1">-</span></div>
+      <div class="brow"><span class="bl">提成 RMB</span><span class="bv" id="b2">-</span></div>
+      <div class="brow"><span class="bl">换算 RM（÷ 1.67）</span><span class="bv" id="b3">-</span></div>
+      <div class="brow"><span class="bl">每日均摊（÷ <span id="bdays">20</span> 天）</span><span class="bv" id="b4">-</span></div>
+    </div>
+  </div>
+
+  <footer>
+    汇率：1 RM = 1.67 RMB<br>
+    仅供参考，实际收入视平台结算而定
+  </footer>
+</div>
+
+<script>
+(function() {
+  var EX = 1.67;
+
+  function fmt(n) { return Math.round(n).toLocaleString(); }
+
+  function calc() {
+    var yl   = parseFloat(document.getElementById('yinlang').value) || 0;
+    var days = parseInt(document.getElementById('days').value) || 1;
+    var rate = parseInt(document.getElementById('rate').value) / 100;
+
+    document.getElementById('days-out').textContent = days + ' 天';
+    document.getElementById('rate-out').textContent = Math.round(rate * 100) + '%';
+    document.getElementById('bdays').textContent = days;
+
+    var base  = yl / 10;
+    var rmbC  = base * rate;
+    var rmC   = rmbC / EX;
+    var daily = rmC / days;
+
+    document.getElementById('r0').textContent = 'RMB ' + fmt(base);
+    document.getElementById('r1').textContent = 'RMB ' + fmt(rmbC);
+    document.getElementById('r2').textContent = 'RM '  + fmt(rmC);
+    document.getElementById('r3').textContent = 'RM '  + fmt(daily);
+
+    document.getElementById('b0').textContent = 'RMB ' + fmt(base);
+    document.getElementById('b1').textContent = Math.round(rate * 100) + '%';
+    document.getElementById('b2').textContent = 'RMB ' + fmt(rmbC);
+    document.getElementById('b3').textContent = 'RM '  + fmt(rmC);
+    document.getElementById('b4').textContent = 'RM '  + fmt(daily);
+  }
+
+  function addTap(el, fn) {
+    el.addEventListener('touchend', function(e) { e.preventDefault(); fn(); }, { passive: false });
+    el.addEventListener('click', fn);
+  }
+
+  addTap(document.getElementById('btn-minus'), function() {
+    var el = document.getElementById('yinlang');
+    el.value = Math.max(0, (parseFloat(el.value) || 0) - 500);
+    calc();
+  });
+
+  addTap(document.getElementById('btn-plus'), function() {
+    var el = document.getElementById('yinlang');
+    el.value = (parseFloat(el.value) || 0) + 500;
+    calc();
+  });
+
+  ['input', 'change', 'touchmove', 'touchend'].forEach(function(evt) {
+    document.getElementById('days').addEventListener(evt, calc, { passive: true });
+    document.getElementById('rate').addEventListener(evt, calc, { passive: true });
+  });
+
+  document.getElementById('yinlang').addEventListener('input', calc);
+  document.getElementById('yinlang').addEventListener('change', calc);
+
+  calc();
+})();
+</script>
+</body>
+</html>
